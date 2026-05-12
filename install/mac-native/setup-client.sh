@@ -18,6 +18,11 @@ err()  { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 if ! command -v brew &>/dev/null; then
   info "Homebrew 설치 중..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
 fi
 info "✅ Homebrew 확인"
 
@@ -26,7 +31,8 @@ echo ""
 echo "🚀 사용할 로컬 추론 백엔드를 선택하세요:"
 echo "  [1] Ollama (기본, 사용 편의성 우수)"
 echo "  [2] MLX (Apple Silicon Unified Memory 최적화, mlx-lm)"
-read -rp "선택 [1]: " BACKEND_CHOICE
+printf "선택 [1]: "
+read -r BACKEND_CHOICE
 BACKEND_CHOICE="${BACKEND_CHOICE:-1}"
 
 if [[ "${BACKEND_CHOICE}" == "1" ]]; then
@@ -87,11 +93,14 @@ fi
 # --- 서버 정보 입력 ---
 echo ""
 echo "📡 원격 Ubuntu 서버 정보를 입력하세요:"
-read -rp "  서버 주소 (IP 또는 hostname) [${BRIDGE_HOST:-}]: " INPUT_HOST
+printf "  서버 주소 (IP 또는 hostname) [%s]: " "${BRIDGE_HOST:-}"
+read -r INPUT_HOST
 BRIDGE_HOST="${INPUT_HOST:-${BRIDGE_HOST:-}}"
-read -rp "  SSH 포트 [${BRIDGE_PORT:-22}]: " INPUT_PORT
+printf "  SSH 포트 [%s]: " "${BRIDGE_PORT:-22}"
+read -r INPUT_PORT
 BRIDGE_PORT="${INPUT_PORT:-${BRIDGE_PORT:-22}}"
-read -rp "  사용자명 [${BRIDGE_USER:-}]: " INPUT_USER
+printf "  사용자명 [%s]: " "${BRIDGE_USER:-}"
+read -r INPUT_USER
 BRIDGE_USER="${INPUT_USER:-${BRIDGE_USER:-}}"
 
 # --- bridge.conf 생성 ---
@@ -103,6 +112,8 @@ else
   LOCAL_PORT="11434"
   REMOTE_PORT="11434"
 fi
+
+mkdir -p "${BRIDGE_DIR}"
 
 cat > "${BRIDGE_DIR}/bridge.conf" <<EOF
 # ai-bridge 설정 (자동 생성: $(date '+%Y-%m-%d %H:%M'))
@@ -158,8 +169,9 @@ if [[ "${BACKEND_CHOICE}" == "1" ]]; then
 
   # --- 기본 모델 풀 (선택) ---
   echo ""
-  read -rp "기본 모델(qwen3:8b)을 다운로드할까요? [Y/n]: " PULL_MODEL
-  if [[ "${PULL_MODEL,,}" != "n" ]]; then
+  printf "기본 모델(qwen3:8b)을 다운로드할까요? [Y/n]: "
+  read -r PULL_MODEL
+  if [[ "${PULL_MODEL}" != "n" && "${PULL_MODEL}" != "N" ]]; then
     info "qwen3:8b 모델 다운로드 중..."
     ollama pull qwen3:8b
   fi
